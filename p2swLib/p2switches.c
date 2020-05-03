@@ -30,7 +30,7 @@ p2sw_init(unsigned char mask)
  * the high-order byte is the buttons that have changed,
  * the low-order byte is the current state of the buttons
  */
-unsigned int 
+unsigned int
 p2sw_read() {
   unsigned int sw_changed = switches_current ^ switches_last_reported;
   switches_last_reported = switches_current;
@@ -43,6 +43,5 @@ __interrupt_vec(PORT2_VECTOR) _SwitchISR(){
   if (P2IFG & switch_mask) {  /* did a button cause this interrupt? */
     P2IFG &= ~switch_mask;	/* clear pending sw interrupts */
     switch_update_interrupt_sense();
-    HandleSwitchIRQ();
   }
 }
