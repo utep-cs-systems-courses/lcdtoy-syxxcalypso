@@ -5,8 +5,7 @@
 #include <shape.h>
 #include <abCircle.h>
 #include <p2switches.h>
-#include <stdio.h>
-#include "sound.h"
+#include <sound.h>
 
 #define RED_LED BIT6
 #define BALL_SPEED 3
@@ -100,8 +99,8 @@ IsGameOver
 */
 static void IsGameOver() {
   if ( scorePlayerLeft >= 3 || scorePlayerRight >= 3 ) {
-    drawString5x7(screenWidth/2 - 10 - 30, screenHeight/2 - 20, "GAME", COLOR_WHITE, COLOR_BLUE);
-    drawString5x7(screenWidth/2 - 10 + 30, screenHeight/2 + 16, "OVER", COLOR_WHITE, COLOR_BLUE);
+    drawString5x7(screenWidth/2 - 10 - 30, screenHeight/2 - 20, "GAME", COLOR_WHITE, COLOR_BLACK);
+    drawString5x7(screenWidth/2 - 10 + 30, screenHeight/2 + 16, "OVER", COLOR_WHITE, COLOR_BLACK);
     for(int i=400; i <= 800; i+=10) {
       set_buzzer(i);
       __delay_cycles(0.1*8000000);
