@@ -12,7 +12,7 @@
  *  Axes: 0 for col, 1 for row.
  */
 typedef struct {
-  int axes[2];
+  float axes[2];
 } Vec2;
 
 extern const Vec2 screenSize, screenCenter, vec2Unit, vec2Zero;
@@ -123,13 +123,13 @@ int abRArrowCheck(const AbRArrow *arrow, const Vec2 *centerPos, const Vec2 *pixe
 
 /** AbShape rectangle
  *
- *  Vector halfSize must be to first quadrant (both axes non-negative).  
+ *  Vector halfSize must be to first quadrant (both axes non-negative).
  *  Specifies extent in all four directions.
  */ 
 typedef struct AbRect_s {
   void (*getBounds)(const struct AbRect_s *rect, const Vec2 *centerPos, Region *bounds);
   int (*check)(const struct AbRect_s *shape, const Vec2 *centerPos, const Vec2 *pixel);
-  const Vec2 halfSize;	
+  const Vec2 halfSize;
 } AbRect;
 
 /** As required by AbShape
