@@ -7,6 +7,7 @@
 #include <p2switches.h>
 
 #define RED_LED BIT6
+#define BALL_SPEED 3
 
 /*
 ================================================================================
@@ -17,7 +18,9 @@
 */
                                                 //
                                 //
-unsigned int                    score;
+unsigned int                    scorePlayerLeft;
+unsigned int                    scorePlayerRight;
+static short                    count           = 0;
 
 const AbRect                    rectPaddleRight = {abRectGetBounds, abRectCheck, {12,1}};
 const AbRect                    rectPaddleLeft  = {abRectGetBounds, abRectCheck, {12,1}};
@@ -70,7 +73,7 @@ static char CollisionPaddleRight(struct transform_s *ball, struct transform_s *p
 
 transform_t transformPaddleLeft = { &layerPaddleLeft, { 0 , 0 }, CollisionPaddleLeft, 0 };
 transform_t transformPaddleRight = { &layerPaddleRight, { 0 , 0 }, CollisionPaddleRight, &transformPaddleLeft };
-transform_t transformBall = { &layerBall, { 1 , -3 }, 0, &transformPaddleRight };
+transform_t transformBall = { &layerBall, { 1 , -BALL_SPEED }, 0, &transformPaddleRight };
 
 /*
 ================================================================================
@@ -163,27 +166,37 @@ CollisionGoal
 
   Check vertical ball - wall collisions.
 ========================================
-*
+*/
 static void CollisionGoal(transform_t *ball, Region *goal)
 {
+  unsigned char goalTouched = 0;
   Vec2 newPos;
   u_char axis;
   Region ballEdge;
 
   vec2Add( &newPos, &ball->layer->posNext, &ball->velocity );
   abShapeGetBounds( ball->layer->abShape, &newPos, &ballEdge );
-  if (
-      ballEdge.topLeft.axes[1]  < goal->topLeft.axes[1]      ||
-      ballEdge.botRight.axes[1] > goal->botRight.axes[1]
-      )
-    {
-      int velocity = ball->velocity.axes[0] = -ball->velocity.axes[0];
-      newPos.axes[0] += (2*velocity);
-    }
+  if ( ballEdge.topLeft.axes[1] < goal->topLeft.axes[1] ) {
+    goalTouched = 1;
+    scorePlayerRight ++;
+    ball->velocity.axes[1] = -BALL_SPEED;
+  }
 
-  ball->layer->posNext = newPos;
+  if ( ballEdge.botRight.axes[1] > goal->botRight.axes[1] ) {
+    goalTouched = 1;
+    scorePlayerLeft ++;
+    ball->velocity.axes[1] = -BALL_SPEED;
+  }
+
+  if ( goalTouched ) {
+    ball->layer->posNext.axes[0] = screenWidth/2;
+    ball->layer->posNext.axes[1] = screenHeight/2;
+    count = -300;
+  }
+
+  return;
 }
-**/
+
 
 /*
 ========================================
@@ -298,15 +311,14 @@ void main() {
     redrawScreen = 0;
     DoPaddleCollision(&transformBall, &transformPaddleLeft);
     DoPaddleCollision(&transformBall, &transformPaddleRight);
-
     DoGenericPhysics(&transformBall, &fieldFence);
+    CollisionGoal(&transformBall, &fieldFence);
     DoRenderLayer(&transformBall, &layerBall);
   }
 }
 
 /** Watchdog timer interrupt handler. 15 interrupts/sec */
 void wdt_c_handler() {
-  static short count = 0;
   count ++;
   if (count == 10) {
     unsigned int state = p2sw_read();
