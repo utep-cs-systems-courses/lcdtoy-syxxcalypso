@@ -16,12 +16,14 @@
 
 ================================================================================
 */
-AbRect rectPaddleLeft = {abRectGetBounds, abRectCheck, {12,1}};
-AbRect rectPaddleRight = {abRectGetBounds, abRectCheck, {12,1}};
 
-AbRectOutline outlineField = {	/* playing field */
-  abRectOutlineGetBounds, abRectOutlineCheck,
-  {screenWidth/2 - 1, screenHeight/2 - 1}
+                //
+                                //
+const AbRect                    rectPaddleLeft  = {abRectGetBounds, abRectCheck, {12,1}};
+const AbRect                    rectPaddleRight = {abRectGetBounds, abRectCheck, {12,1}};
+const AbRectOutline             outlineField    = {
+        abRectOutlineGetBounds, abRectOutlineCheck,
+        {screenWidth/2 - 1, screenHeight/2 - 1}
 };
 
 Layer layerField = {
@@ -64,7 +66,7 @@ typedef struct transform_s {
 
 transform_t transformPaddleRight = { &layerPaddleRight, { 0 , 0 }, 0 };
 transform_t transformPaddleLeft = { &layerPaddleLeft, { 0 , 0 }, &transformPaddleRight };
-transform_t transformBall = { &layerBall, { -4 , 0 }, &transformPaddleLeft };
+transform_t transformBall = { &layerBall, { -3 , 2 }, &transformPaddleLeft };
 
 /*
 ================================================================================
@@ -77,14 +79,14 @@ transform_t transformBall = { &layerBall, { -4 , 0 }, &transformPaddleLeft };
 
 /*
 ========================================
-DoRenderTransformLayer
+DoRenderLayer
 
   Redraw layers based on updated
   transform components.
 ========================================
 */
 
-void DoRenderLayer(transform_t *transforms, Layer *layers)
+static void DoRenderLayer(transform_t *transforms, Layer *layers)
 {
   int row, col;
   transform_t *transform;
@@ -120,8 +122,6 @@ void DoRenderLayer(transform_t *transforms, Layer *layers)
   } // for moving layer being updated
 }
 
-//Region fence = {{10,30}, {SHORT_EDGE_PIXELS-10, LONG_EDGE_PIXELS-10}}; /**< Create a fence region */
-
 /*
 ========================================
 DoLayerTransform
@@ -129,7 +129,7 @@ DoLayerTransform
   Apply transforms to geometry layers.
 ========================================
 */
-void DoLayerTransform(transform_t *transform, Region *fence)
+static void DoLayerTransform(transform_t *transform, Region *fence)
 {
   Vec2 newPos;
   u_char axis;
@@ -148,7 +148,15 @@ void DoLayerTransform(transform_t *transform, Region *fence)
   } /**< for transform */
 }
 
-void DoCollisionLeft(transform_t *ball, Region *paddle)
+
+/*
+========================================
+DoCollisionLeft
+
+  Calculate collision for bottom paddle.
+========================================
+*/
+static void DoCollisionLeft(transform_t *ball, const Region *paddle)
 {
   Vec2 newPos;
   u_char axis;
@@ -171,9 +179,13 @@ int redrawScreen = 1;           /**< Boolean for whether screen needs to be redr
 Region fieldFence;		/**< fence around playing field  */
 
 
-/** Initializes everything, enables interrupts and green LED,
- *  and handles the rendering for the screen
- */
+/*
+============================================================
+
+    Main Loop
+
+============================================================
+*/
 void main() {
   P1DIR |= RED_LED;
   P1OUT |= RED_LED;
@@ -211,7 +223,6 @@ void main() {
 /** Watchdog timer interrupt handler. 15 interrupts/sec */
 void wdt_c_handler() {
   static short count = 0;
-  P1OUT |= RED_LED;		      /**< Green LED on when cpu on */
   count ++;
   if (count == 10) {
     unsigned int state = p2sw_read();
@@ -236,5 +247,4 @@ void wdt_c_handler() {
     redrawScreen = 1;
     count = 0;
   }
-  P1OUT &= ~RED_LED;		    /**< Green LED off when cpu off */
 }

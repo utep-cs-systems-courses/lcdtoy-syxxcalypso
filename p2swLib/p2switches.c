@@ -14,7 +14,7 @@ switch_update_interrupt_sense()
   P2IES &= (switches_current | ~switch_mask); /* if switch down, sense up */
 }
 
-void 
+void
 p2sw_init(unsigned char mask)
 {
   switch_mask = mask;
@@ -39,9 +39,10 @@ p2sw_read() {
 
 /* Switch on P2 (S1) */
 void
-__interrupt_vec(PORT2_VECTOR) Port_2(){
+__interrupt_vec(PORT2_VECTOR) _SwitchISR(){
   if (P2IFG & switch_mask) {  /* did a button cause this interrupt? */
     P2IFG &= ~switch_mask;	/* clear pending sw interrupts */
     switch_update_interrupt_sense();
+    HandleSwitchIRQ();
   }
 }
