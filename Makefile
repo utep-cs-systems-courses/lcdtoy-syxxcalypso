@@ -4,6 +4,7 @@ all:
 	(cd shapeLib; make install)
 	(cd circleLib; make install)
 	(cd p2swLib; make install)
+	(cd soundLib; make install)
 	(cd game; make)
 
 doc:
@@ -15,6 +16,7 @@ clean:
 	(cd shapeLib; make clean)
 	(cd p2swLib; make clean)
 	(cd circleLib; make clean)
+	(cd soundLib; make clean)
 	(cd game; make clean)
 	rm -rf lib h
 	rm -rf doxygen_docs/*
