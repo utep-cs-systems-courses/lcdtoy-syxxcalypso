@@ -6,6 +6,7 @@
 #include <abCircle.h>
 #include <p2switches.h>
 #include <stdio.h>
+#include "sound.h"
 
 #define RED_LED BIT6
 #define BALL_SPEED 3
@@ -101,6 +102,11 @@ static void IsGameOver() {
   if ( scorePlayerLeft >= 3 || scorePlayerRight >= 3 ) {
     drawString5x7(screenWidth/2 - 10 - 30, screenHeight/2 - 20, "GAME", COLOR_WHITE, COLOR_BLUE);
     drawString5x7(screenWidth/2 - 10 + 30, screenHeight/2 + 16, "OVER", COLOR_WHITE, COLOR_BLUE);
+    for(int i=400; i <= 800; i+=10) {
+      set_buzzer(i);
+      __delay_cycles(0.1*8000000);
+    }
+    stop_buzzer();
     or_sr(0x10);
     WDTCTL = WDTPW | WDTHOLD;
   }
@@ -174,6 +180,7 @@ static inline void DoGenericPhysics(transform_t *transform, Region *fence)
         shapeBoundary.botRight.axes[0] > fence->botRight.axes[0]
         )
       {
+        set_buzzer(900);
         int velocity = transform->velocity.axes[0] = -transform->velocity.axes[0];
         newPos.axes[0] += (2*velocity);
       }
@@ -201,7 +208,7 @@ static inline void CollisionGoal(transform_t *ball, Region *goal)
   if ( ballEdge.topLeft.axes[1] < goal->topLeft.axes[1] ) {
     goalTouched = 1;
     scorePlayerRight ++;
-    ball->velocity.axes[1] = -BALL_SPEED;
+    ball->velocity.axes[1] = BALL_SPEED;
   }
 
   if ( ballEdge.botRight.axes[1] > goal->botRight.axes[1] ) {
@@ -211,6 +218,7 @@ static inline void CollisionGoal(transform_t *ball, Region *goal)
   }
 
   if ( goalTouched ) {
+    set_buzzer(600);
     ball->layer->posNext.axes[0] = screenWidth/2;
     ball->layer->posNext.axes[1] = screenHeight/2;
     IsGameOver();
@@ -281,6 +289,7 @@ static inline void DoPaddleCollision(transform_t *ball, transform_t *paddle)
       ballEdge.topLeft.axes[0]  < paddleEdge.botRight.axes[0]
       )
     {
+      set_buzzer(440);
       int velocity;
       velocity = ball->velocity.axes[1] = -ball->velocity.axes[1];
       newPos.axes[1] += (velocity);
@@ -303,6 +312,7 @@ void main() {
   lcd_init();
   shapeInit();
   p2sw_init(15);
+  init_buzzer();
 
   shapeInit();
 
@@ -335,6 +345,7 @@ void main() {
     drawString5x7(3, 20, scoreStringLeft, COLOR_WHITE, COLOR_BLACK);
     char scoreStringRight [2] = { '0'+scorePlayerRight, '\0' };
     drawString5x7(screenWidth-7, screenHeight-20, scoreStringRight, COLOR_WHITE, COLOR_BLACK);
+    stop_buzzer();
   }
 }
 
