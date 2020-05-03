@@ -21,3 +21,7 @@ clean:
 
 load:
 	(cd game; make load)
+
+fonttest:
+	(cd lcdLib; make clean; make install)
+	(cd game; make load)
