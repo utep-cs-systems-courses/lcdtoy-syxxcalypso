@@ -5,6 +5,7 @@
 #include <shape.h>
 #include <abCircle.h>
 #include <p2switches.h>
+#include <stdio.h>
 
 #define RED_LED BIT6
 #define BALL_SPEED 3
@@ -26,8 +27,13 @@ const AbRect                    rectPaddleRight = {abRectGetBounds, abRectCheck,
 const AbRect                    rectPaddleLeft  = {abRectGetBounds, abRectCheck, {12,1}};
 const AbRectOutline             outlineField    = {
         abRectOutlineGetBounds, abRectOutlineCheck,
-        {screenWidth/2 - 1, screenHeight/2 - 1}
+        {screenWidth/2 - 10, screenHeight/2 - 1}
 };
+
+u_int bgColor = COLOR_BLACK;
+int redrawScreen = 1;
+
+Region fieldFence;
 
 Layer layerField = {
   (AbShape *) &outlineField,
@@ -78,11 +84,28 @@ transform_t transformBall = { &layerBall, { 1 , -BALL_SPEED }, 0, &transformPadd
 /*
 ================================================================================
 
-    Geometry Functions
+    Game Mechanics
 
 ================================================================================
 */
 
+/*
+========================================
+IsGameOver
+
+  Check for player score limit and
+  freeze cpu.
+========================================
+*/
+static void IsGameOver() {
+  if ( scorePlayerLeft >= 3 || scorePlayerRight >= 3 ) {
+    drawString5x7(screenWidth/2 - 10 - 30, screenHeight/2 - 20, "GAME", COLOR_WHITE, COLOR_BLUE);
+    drawString5x7(screenWidth/2 - 10 + 30, screenHeight/2 + 16, "OVER", COLOR_WHITE, COLOR_BLUE);
+    or_sr(0x10);
+    WDTCTL = WDTPW | WDTHOLD;
+  }
+  return;
+}
 
 /*
 ========================================
@@ -92,7 +115,6 @@ DoRenderLayer
   transform components.
 ========================================
 */
-
 static void DoRenderLayer(transform_t *transforms, Layer *layers)
 {
   int row, col;
@@ -137,7 +159,7 @@ DoGenericPhysics
   and check horizontal wall collisions.
 ========================================
 */
-static void DoGenericPhysics(transform_t *transform, Region *fence)
+static inline void DoGenericPhysics(transform_t *transform, Region *fence)
 {
   Vec2 newPos;
   u_char axis;
@@ -167,7 +189,7 @@ CollisionGoal
   Check vertical ball - wall collisions.
 ========================================
 */
-static void CollisionGoal(transform_t *ball, Region *goal)
+static inline void CollisionGoal(transform_t *ball, Region *goal)
 {
   unsigned char goalTouched = 0;
   Vec2 newPos;
@@ -191,12 +213,12 @@ static void CollisionGoal(transform_t *ball, Region *goal)
   if ( goalTouched ) {
     ball->layer->posNext.axes[0] = screenWidth/2;
     ball->layer->posNext.axes[1] = screenHeight/2;
+    IsGameOver();
     count = -300;
   }
 
   return;
 }
-
 
 /*
 ========================================
@@ -242,7 +264,7 @@ static char CollisionPaddleRight(transform_t *ball, transform_t *paddle) {
 ========================================
 DoPaddleCollision
 
-  Calculate collision for bottom paddle.
+  Generic paddle collision check.
 ========================================
 */
 static inline void DoPaddleCollision(transform_t *ball, transform_t *paddle)
@@ -261,17 +283,10 @@ static inline void DoPaddleCollision(transform_t *ball, transform_t *paddle)
     {
       int velocity;
       velocity = ball->velocity.axes[1] = -ball->velocity.axes[1];
-      newPos.axes[1] += (2*velocity);
+      newPos.axes[1] += (velocity);
       ball->layer->posNext = newPos;
     }
 }
-
-
-u_int bgColor = COLOR_BLACK;     /**< The background color */
-int redrawScreen = 1;           /**< Boolean for whether screen needs to be redrawn */
-
-Region fieldFence;		/**< fence around playing field  */
-
 
 /*
 ============================================================
@@ -301,6 +316,8 @@ void main() {
   enableWDTInterrupts();      /**< enable periodic interrupt */
   or_sr(0x8);	              /**< GIE (enable interrupts) */
 
+  //char scoreStringRight [5] = "";
+  //sprintf(scoreStringRight, "%d", scorePlayerRight);
 
   for(;;) {
     while (!redrawScreen) { /**< Pause CPU if screen doesn't need updating */
@@ -314,10 +331,14 @@ void main() {
     DoGenericPhysics(&transformBall, &fieldFence);
     CollisionGoal(&transformBall, &fieldFence);
     DoRenderLayer(&transformBall, &layerBall);
+    char scoreStringLeft [2] = { '0'+scorePlayerLeft, '\0' };
+    drawString5x7(3, 20, scoreStringLeft, COLOR_WHITE, COLOR_BLACK);
+    char scoreStringRight [2] = { '0'+scorePlayerRight, '\0' };
+    drawString5x7(screenWidth-7, screenHeight-20, scoreStringRight, COLOR_WHITE, COLOR_BLACK);
   }
 }
 
-/** Watchdog timer interrupt handler. 15 interrupts/sec */
+/** Watchdog timer interrupt handler. 10 interrupts/sec */
 void wdt_c_handler() {
   count ++;
   if (count == 10) {
