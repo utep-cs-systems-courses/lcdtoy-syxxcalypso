@@ -12,7 +12,7 @@
  *  Axes: 0 for col, 1 for row.
  */
 typedef struct {
-  float axes[2];
+  int axes[2];
 } Vec2;
 
 extern const Vec2 screenSize, screenCenter, vec2Unit, vec2Zero;
