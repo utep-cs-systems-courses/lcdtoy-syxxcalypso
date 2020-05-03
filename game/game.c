@@ -8,7 +8,6 @@
 
 #define RED_LED BIT6
 
-
 /*
 ================================================================================
 
@@ -16,11 +15,12 @@
 
 ================================================================================
 */
-
-                //
+                                                //
                                 //
-const AbRect                    rectPaddleLeft  = {abRectGetBounds, abRectCheck, {12,1}};
+unsigned int                    score;
+
 const AbRect                    rectPaddleRight = {abRectGetBounds, abRectCheck, {12,1}};
+const AbRect                    rectPaddleLeft  = {abRectGetBounds, abRectCheck, {12,1}};
 const AbRectOutline             outlineField    = {
         abRectOutlineGetBounds, abRectOutlineCheck,
         {screenWidth/2 - 1, screenHeight/2 - 1}
@@ -34,20 +34,20 @@ Layer layerField = {
   0
 };
 
-Layer layerPaddleRight = {
-  (AbShape *)&rectPaddleRight,
+Layer layerPaddleLeft = {
+  (AbShape *)&rectPaddleLeft,
   {screenWidth/2, 10},
   {0,0}, {0,0},
   COLOR_WHITE,
   &layerField,
 };
 
-Layer layerPaddleLeft = {
-  (AbShape *)&rectPaddleLeft,
+Layer layerPaddleRight = {
+  (AbShape *)&rectPaddleRight,
   {screenWidth/2, screenHeight-10},
   {0,0}, {0,0},
   COLOR_WHITE,
-  &layerPaddleRight,
+  &layerPaddleLeft,
 };
 
 Layer layerBall = {
@@ -55,18 +55,22 @@ Layer layerBall = {
   {(screenWidth/2), (screenHeight/2)},
   {0,0}, {0,0},
   COLOR_WHITE,
-  &layerPaddleLeft,
+  &layerPaddleRight,
 };
 
 typedef struct transform_s {
   Layer *layer;
   Vec2 velocity;
+  char (*CollisionCheck)(struct transform_s*, struct transform_s*);
   struct transform_s *next;
 } transform_t;
 
-transform_t transformPaddleRight = { &layerPaddleRight, { 0 , 0 }, 0 };
-transform_t transformPaddleLeft = { &layerPaddleLeft, { 0 , 0 }, &transformPaddleRight };
-transform_t transformBall = { &layerBall, { -3 , 2 }, &transformPaddleLeft };
+static char CollisionPaddleLeft(struct transform_s *ball, struct transform_s *paddle);
+static char CollisionPaddleRight(struct transform_s *ball, struct transform_s *paddle);
+
+transform_t transformPaddleLeft = { &layerPaddleLeft, { 0 , 0 }, CollisionPaddleLeft, 0 };
+transform_t transformPaddleRight = { &layerPaddleRight, { 0 , 0 }, CollisionPaddleRight, &transformPaddleLeft };
+transform_t transformBall = { &layerBall, { 1 , -3 }, 0, &transformPaddleRight };
 
 /*
 ================================================================================
@@ -102,7 +106,7 @@ static void DoRenderLayer(transform_t *transforms, Layer *layers)
   for (transform = transforms; transform; transform = transform->next) { /* for each moving layer */
     Region bounds;
     layerGetBounds(transform->layer, &bounds);
-    lcd_setArea(bounds.topLeft.axes[0], bounds.topLeft.axes[1], 
+    lcd_setArea(bounds.topLeft.axes[0], bounds.topLeft.axes[1],
 		bounds.botRight.axes[0], bounds.botRight.axes[1]);
     for (row = bounds.topLeft.axes[1]; row <= bounds.botRight.axes[1]; row++) {
       for (col = bounds.topLeft.axes[0]; col <= bounds.botRight.axes[0]; col++) {
@@ -124,52 +128,129 @@ static void DoRenderLayer(transform_t *transforms, Layer *layers)
 
 /*
 ========================================
-DoLayerTransform
+DoGenericPhysics
 
-  Apply transforms to geometry layers.
+  Apply transforms to geometry layers
+  and check horizontal wall collisions.
 ========================================
 */
-static void DoLayerTransform(transform_t *transform, Region *fence)
+static void DoGenericPhysics(transform_t *transform, Region *fence)
 {
   Vec2 newPos;
   u_char axis;
   Region shapeBoundary;
   for (; transform; transform = transform->next) {
-    vec2Add(&newPos, &transform->layer->posNext, &transform->velocity);
-    abShapeGetBounds(transform->layer->abShape, &newPos, &shapeBoundary);
-    for (axis = 0; axis < 2; axis ++) {
-      if ((shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) ||
-	  (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis]) ) {
-	int velocity = transform->velocity.axes[axis] = -transform->velocity.axes[axis];
-	newPos.axes[axis] += (2*velocity);
-      }	/**< if outside of fence */
-    } /**< for axis */
+
+    vec2Add( &newPos, &transform->layer->posNext, &transform->velocity );
+    abShapeGetBounds( transform->layer->abShape, &newPos, &shapeBoundary );
+
+    if (
+        shapeBoundary.topLeft.axes[0]  < fence->topLeft.axes[0]      ||
+        shapeBoundary.botRight.axes[0] > fence->botRight.axes[0]
+        )
+      {
+        int velocity = transform->velocity.axes[0] = -transform->velocity.axes[0];
+        newPos.axes[0] += (2*velocity);
+      }
+
     transform->layer->posNext = newPos;
   } /**< for transform */
 }
 
+/*
+========================================
+CollisionGoal
+
+  Check vertical ball - wall collisions.
+========================================
+*
+static void CollisionGoal(transform_t *ball, Region *goal)
+{
+  Vec2 newPos;
+  u_char axis;
+  Region ballEdge;
+
+  vec2Add( &newPos, &ball->layer->posNext, &ball->velocity );
+  abShapeGetBounds( ball->layer->abShape, &newPos, &ballEdge );
+  if (
+      ballEdge.topLeft.axes[1]  < goal->topLeft.axes[1]      ||
+      ballEdge.botRight.axes[1] > goal->botRight.axes[1]
+      )
+    {
+      int velocity = ball->velocity.axes[0] = -ball->velocity.axes[0];
+      newPos.axes[0] += (2*velocity);
+    }
+
+  ball->layer->posNext = newPos;
+}
+**/
 
 /*
 ========================================
-DoCollisionLeft
+CollisionPaddleLeft
+
+  Calculate vertical collision for
+  left player.
+========================================
+*/
+static char CollisionPaddleLeft(transform_t *ball, transform_t *paddle) {
+  Vec2 newPos;
+  Region ballEdge;
+  Region paddleEdge;
+  vec2Add(&newPos, &ball->layer->posNext, &ball->velocity);
+  abShapeGetBounds(ball->layer->abShape, &newPos, &ballEdge);
+  abShapeGetBounds(paddle->layer->abShape, &paddle->layer->pos, &paddleEdge);
+  if ( ballEdge.topLeft.axes[1] < paddleEdge.botRight.axes[1] )
+    return 1;
+  return 0;
+}
+
+/*
+========================================
+CollisionPaddleRight
+
+  Calculate vertical collision for
+  right player.
+========================================
+*/
+static char CollisionPaddleRight(transform_t *ball, transform_t *paddle) {
+  Vec2 newPos;
+  Region ballEdge;
+  Region paddleEdge;
+  vec2Add(&newPos, &ball->layer->posNext, &ball->velocity);
+  abShapeGetBounds(ball->layer->abShape, &newPos, &ballEdge);
+  abShapeGetBounds(paddle->layer->abShape, &paddle->layer->pos, &paddleEdge);
+  if ( ballEdge.botRight.axes[1] > paddleEdge.topLeft.axes[1] )
+    return 1;
+  return 0;
+}
+
+/*
+========================================
+DoPaddleCollision
 
   Calculate collision for bottom paddle.
 ========================================
 */
-static void DoCollisionLeft(transform_t *ball, const Region *paddle)
+static inline void DoPaddleCollision(transform_t *ball, transform_t *paddle)
 {
   Vec2 newPos;
-  u_char axis;
-  Region shapeBoundary;
+  Region ballEdge;
+  Region paddleEdge;
   vec2Add(&newPos, &ball->layer->posNext, &ball->velocity);
+  abShapeGetBounds(ball->layer->abShape, &newPos, &ballEdge);
+  abShapeGetBounds(paddle->layer->abShape, &paddle->layer->pos, &paddleEdge);
   if (
-       ( ball->layer->posNext->axes[1] > paddle->layer->pos->axes[1] ) && // Check pass bottom
-       ( ball->layer->posNext->axes[0] > paddle->botRight.axes[axis] ) && // Check pass b_right over p_left
-      ) {
-    int velocity = ball->velocity.axes[axis] = -ball->velocity.axes[axis];
-    newPos.axes[axis] += (2*velocity);
-  }	/**< if outside of fence */
-  ball->layer->posNext = newPos;
+      paddle->CollisionCheck(ball, paddle)                     &&
+      ballEdge.botRight.axes[0] > paddleEdge.topLeft.axes[0]   &&
+      ballEdge.topLeft.axes[0]  < paddleEdge.botRight.axes[0]
+      )
+    {
+      int velocity;
+      velocity = ball->velocity.axes[1] = -ball->velocity.axes[1];
+      newPos.axes[1] += (2*velocity);
+      ball->layer->posNext = newPos;
+    }
 }
 
 
@@ -215,7 +296,10 @@ void main() {
     }
     P1OUT |= RED_LED;       /**< Green led on when CPU on */
     redrawScreen = 0;
-    DoLayerTransform(&transformBall, &fieldFence);
+    DoPaddleCollision(&transformBall, &transformPaddleLeft);
+    DoPaddleCollision(&transformBall, &transformPaddleRight);
+
+    DoGenericPhysics(&transformBall, &fieldFence);
     DoRenderLayer(&transformBall, &layerBall);
   }
 }
@@ -227,13 +311,6 @@ void wdt_c_handler() {
   if (count == 10) {
     unsigned int state = p2sw_read();
 
-    if (!(state & 1))
-      transformPaddleLeft.velocity.axes[0] = -4;
-    else if (!(state & 2))
-      transformPaddleLeft.velocity.axes[0] = 4;
-    else {
-      transformPaddleLeft.velocity.axes[0] = 0;
-    }
     if (!(state & 4))
       transformPaddleRight.velocity.axes[0] = -4;
     else if (!(state & 8))
@@ -241,9 +318,13 @@ void wdt_c_handler() {
     else {
       transformPaddleRight.velocity.axes[0] = 0;
     }
-
-
-
+    if (!(state & 1))
+      transformPaddleLeft.velocity.axes[0] = -4;
+    else if (!(state & 2))
+      transformPaddleLeft.velocity.axes[0] = 4;
+    else {
+      transformPaddleLeft.velocity.axes[0] = 0;
+    }
     redrawScreen = 1;
     count = 0;
   }
