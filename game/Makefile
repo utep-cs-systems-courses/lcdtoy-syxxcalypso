@@ -10,8 +10,8 @@ AS              = msp430-elf-gcc -mmcu=${CPU} -c
 all:game.elf
 
 #additional rules for files
-game.elf: ${COMMON_OBJECTS} game.o sound.o p2sw.o wdt_handler.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $^ -lTimer -lLcd -lShape -lCircle -lp2sw
+game.elf: ${COMMON_OBJECTS} game.o wdt_handler.o
+	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $^ -lTimer -lLcd -lShape -lCircle -lp2sw -lsound
 
 load: game.elf
 	msp430loader.sh $^
