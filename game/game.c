@@ -6,88 +6,85 @@
 #include <abCircle.h>
 #include <p2switches.h>
 #include <sound.h>
+#include "game.h"
 
 #define RED_LED BIT6
 #define BALL_SPEED 3
 
-/*
-================================================================================
+static Region              fieldFence;
 
-    Geometry Layers
+u_int                      bgColor               = COLOR_BLACK;
+int                        redrawScreen          = 0;
 
-================================================================================
-*/
-                                                //
-                                //
-unsigned int                    scorePlayerLeft;
-unsigned int                    scorePlayerRight;
-static short                    count           = 0;
+static short               count                 = 0;
+static unsigned int        scorePlayerLeft       = 0;
+static unsigned int        scorePlayerRight      = 0;
 
-const AbRect                    rectPaddleRight = {abRectGetBounds, abRectCheck, {12,1}};
-const AbRect                    rectPaddleLeft  = {abRectGetBounds, abRectCheck, {12,1}};
-const AbRectOutline             outlineField    = {
-        abRectOutlineGetBounds, abRectOutlineCheck,
-        {screenWidth/2 - 10, screenHeight/2 - 1}
+const static AbRect        rectPaddleRight       = {
+                                                    abRectGetBounds,
+                                                    abRectCheck,
+                                                    {12,1}
+};
+const static AbRect        rectPaddleLeft        = {
+                                                    abRectGetBounds,
+                                                    abRectCheck,
+                                                    {12,1}
+};
+const static AbRectOutline outlineField          = {
+                                                    abRectOutlineGetBounds,
+                                                    abRectOutlineCheck,
+                                                    {
+                                                     screenWidth/2 - 10,
+                                                     screenHeight/2 - 1
+                                                    }
+};
+static Layer               layerField            = {
+                                                    (AbShape *) &outlineField,
+                                                    {screenWidth/2, screenHeight/2},
+                                                    {0,0}, {0,0},
+                                                    COLOR_WHITE,
+                                                    0
+};
+static Layer               layerPaddleLeft        = {
+                                                     (AbShape *)&rectPaddleLeft,
+                                                     {screenWidth/2, 10},
+                                                     {0,0}, {0,0},
+                                                     COLOR_WHITE,
+                                                     &layerField,
+};
+static Layer               layerPaddleRight       = {
+                                                     (AbShape *)&rectPaddleRight,
+                                                     {screenWidth/2, screenHeight-10},
+                                                     {0,0}, {0,0},
+                                                     COLOR_WHITE,
+                                                     &layerPaddleLeft,
+};
+static Layer               layerBall               = {
+                                                      (AbShape *)&circle2,
+                                                      {(screenWidth/2), (screenHeight/2)},
+                                                      {0,0}, {0,0},
+                                                      COLOR_WHITE,
+                                                      &layerPaddleRight,
 };
 
-u_int bgColor = COLOR_BLACK;
-int redrawScreen = 1;
-
-Region fieldFence;
-
-Layer layerField = {
-  (AbShape *) &outlineField,
-  {screenWidth/2, screenHeight/2},
-  {0,0}, {0,0},
-  COLOR_WHITE,
-  0
+static transform_t         transformPaddleLeft      = {
+                                                       &layerPaddleLeft,
+                                                       { 0 , 0 },
+                                                       HandleCollidePaddleLeft,
+                                                       0
 };
-
-Layer layerPaddleLeft = {
-  (AbShape *)&rectPaddleLeft,
-  {screenWidth/2, 10},
-  {0,0}, {0,0},
-  COLOR_WHITE,
-  &layerField,
+static transform_t         transformPaddleRight     = {
+                                                       &layerPaddleRight,
+                                                       { 0 , 0 },
+                                                       HandleCollidePaddleRight,
+                                                       &transformPaddleLeft
 };
-
-Layer layerPaddleRight = {
-  (AbShape *)&rectPaddleRight,
-  {screenWidth/2, screenHeight-10},
-  {0,0}, {0,0},
-  COLOR_WHITE,
-  &layerPaddleLeft,
+static transform_t         transformBall            = {
+                                                       &layerBall,
+                                                       { 1 , -BALL_SPEED },
+                                                       0,
+                                                       &transformPaddleRight
 };
-
-Layer layerBall = {
-  (AbShape *)&circle2,
-  {(screenWidth/2), (screenHeight/2)},
-  {0,0}, {0,0},
-  COLOR_WHITE,
-  &layerPaddleRight,
-};
-
-typedef struct transform_s {
-  Layer *layer;
-  Vec2 velocity;
-  char (*CollisionCheck)(struct transform_s*, struct transform_s*);
-  struct transform_s *next;
-} transform_t;
-
-static char CollisionPaddleLeft(struct transform_s *ball, struct transform_s *paddle);
-static char CollisionPaddleRight(struct transform_s *ball, struct transform_s *paddle);
-
-transform_t transformPaddleLeft = { &layerPaddleLeft, { 0 , 0 }, CollisionPaddleLeft, 0 };
-transform_t transformPaddleRight = { &layerPaddleRight, { 0 , 0 }, CollisionPaddleRight, &transformPaddleLeft };
-transform_t transformBall = { &layerBall, { 1 , -BALL_SPEED }, 0, &transformPaddleRight };
-
-/*
-================================================================================
-
-    Game Mechanics
-
-================================================================================
-*/
 
 /*
 ========================================
@@ -99,28 +96,28 @@ IsGameOver
 */
 static void IsGameOver() {
   if ( scorePlayerLeft >= 3 || scorePlayerRight >= 3 ) {
-    drawString5x7(screenWidth/2 - 10 - 30, screenHeight/2 - 20, "GAME", COLOR_WHITE, COLOR_BLACK);
-    drawString5x7(screenWidth/2 - 10 + 30, screenHeight/2 + 16, "OVER", COLOR_WHITE, COLOR_BLACK);
+    drawString5x7(screenWidth/2 - 40, screenHeight/2 - 20, "GAME", COLOR_WHITE, COLOR_BLACK);
+    drawString5x7(screenWidth/2 + 20, screenHeight/2 - 20, "OVER", COLOR_WHITE, COLOR_BLACK);
     for(int i=400; i <= 800; i+=10) {
       set_buzzer(i);
       __delay_cycles(0.1*8000000);
     }
     stop_buzzer();
-    or_sr(0x10);
-    WDTCTL = WDTPW | WDTHOLD;
+    or_sr(0x10);                                            // Paralyze CPU
+    WDTCTL = WDTPW | WDTHOLD;                               // Stop Watchdog
   }
   return;
 }
 
 /*
 ========================================
-DoRenderLayer
+DoRenderLayers
 
   Redraw layers based on updated
   transform components.
 ========================================
 */
-static void DoRenderLayer(transform_t *transforms, Layer *layers)
+static void DoRenderLayers(transform_t *transforms, Layer *layers)
 {
   int row, col;
   transform_t *transform;
@@ -158,13 +155,13 @@ static void DoRenderLayer(transform_t *transforms, Layer *layers)
 
 /*
 ========================================
-DoGenericPhysics
+DoCollideWalls
 
   Apply transforms to geometry layers
   and check horizontal wall collisions.
 ========================================
 */
-static inline void DoGenericPhysics(transform_t *transform, Region *fence)
+static inline void DoCollideWalls(transform_t *transform, Region *fence)
 {
   Vec2 newPos;
   u_char axis;
@@ -190,12 +187,12 @@ static inline void DoGenericPhysics(transform_t *transform, Region *fence)
 
 /*
 ========================================
-CollisionGoal
+DoCollideGoals
 
   Check vertical ball - wall collisions.
 ========================================
 */
-static inline void CollisionGoal(transform_t *ball, Region *goal)
+static inline void DoCollideGoals(transform_t *ball, Region *goal)
 {
   unsigned char goalTouched = 0;
   Vec2 newPos;
@@ -229,13 +226,13 @@ static inline void CollisionGoal(transform_t *ball, Region *goal)
 
 /*
 ========================================
-CollisionPaddleLeft
+HandleCollidePaddleLeft
 
   Calculate vertical collision for
   left player.
 ========================================
 */
-static char CollisionPaddleLeft(transform_t *ball, transform_t *paddle) {
+static char HandleCollidePaddleLeft(transform_t *ball, transform_t *paddle) {
   Vec2 newPos;
   Region ballEdge;
   Region paddleEdge;
@@ -249,13 +246,13 @@ static char CollisionPaddleLeft(transform_t *ball, transform_t *paddle) {
 
 /*
 ========================================
-CollisionPaddleRight
+HandleCollidePaddleRight
 
   Calculate vertical collision for
   right player.
 ========================================
 */
-static char CollisionPaddleRight(transform_t *ball, transform_t *paddle) {
+static char HandleCollidePaddleRight(transform_t *ball, transform_t *paddle) {
   Vec2 newPos;
   Region ballEdge;
   Region paddleEdge;
@@ -269,12 +266,12 @@ static char CollisionPaddleRight(transform_t *ball, transform_t *paddle) {
 
 /*
 ========================================
-DoPaddleCollision
+DoCollidePaddle
 
   Generic paddle collision check.
 ========================================
 */
-static inline void DoPaddleCollision(transform_t *ball, transform_t *paddle)
+static inline void DoCollidePaddle(transform_t *ball, transform_t *paddle)
 {
   Vec2 newPos;
   Region ballEdge;
@@ -299,56 +296,89 @@ static inline void DoPaddleCollision(transform_t *ball, transform_t *paddle)
 /*
 ============================================================
 
-    Main Loop
+    Main
 
 ============================================================
 */
 void main() {
+
+  /*
+  ====================
+
+      Initialization
+
+  ====================
+  */
+
+  // Prepare Activity Light
   P1DIR |= RED_LED;
   P1OUT |= RED_LED;
 
+  // Initialize Library Functions
   configureClocks();
   lcd_init();
   shapeInit();
   p2sw_init(15);
   init_buzzer();
-
   shapeInit();
 
+  // Initialize Geometry Layers
   layerInit(&layerBall);
   layerDraw(&layerBall);
-
-
   layerGetBounds(&layerField, &fieldFence);
 
+  // Enable automatic dog feeder
+  enableWDTInterrupts();
 
-  enableWDTInterrupts();      /**< enable periodic interrupt */
-  or_sr(0x8);	              /**< GIE (enable interrupts) */
+  // Enable Interrupts
+  or_sr(0x8);
 
-  //char scoreStringRight [5] = "";
-  //sprintf(scoreStringRight, "%d", scorePlayerRight);
+  /*
+  ====================
+
+      Game Loop
+
+  ====================
+  */
 
   for(;;) {
-    while (!redrawScreen) { /**< Pause CPU if screen doesn't need updating */
-      P1OUT &= ~RED_LED;    /**< Green led off witHo CPU */
-      or_sr(0x10);	      /**< CPU OFF */
+
+    // Paralyze CPU and flicker activity light
+    while (!redrawScreen) {
+      P1OUT &= ~RED_LED;
+      or_sr(0x10);
     }
-    P1OUT |= RED_LED;       /**< Green led on when CPU on */
+    P1OUT |= RED_LED;
+
+    // Handle Physics in sync with Watchdog
     redrawScreen = 0;
-    DoPaddleCollision(&transformBall, &transformPaddleLeft);
-    DoPaddleCollision(&transformBall, &transformPaddleRight);
-    DoGenericPhysics(&transformBall, &fieldFence);
-    CollisionGoal(&transformBall, &fieldFence);
-    DoRenderLayer(&transformBall, &layerBall);
+    DoCollidePaddle(&transformBall, &transformPaddleLeft);
+    DoCollidePaddle(&transformBall, &transformPaddleRight);
+    DoCollideWalls(&transformBall, &fieldFence);
+    DoCollideGoals(&transformBall, &fieldFence);
+    DoRenderLayers(&transformBall, &layerBall);
+
+    // Update Score Charts
     char scoreStringLeft [2] = { '0'+scorePlayerLeft, '\0' };
     drawString5x7(3, 20, scoreStringLeft, COLOR_WHITE, COLOR_BLACK);
     char scoreStringRight [2] = { '0'+scorePlayerRight, '\0' };
     drawString5x7(screenWidth-7, screenHeight-20, scoreStringRight, COLOR_WHITE, COLOR_BLACK);
+
+    // Stop Sounds in sync with Watchdog
     stop_buzzer();
   }
 }
 
-/** Watchdog timer interrupt handler. 10 interrupts/sec */
+
+/*
+========================================
+wdt_c_handler
+
+  Feed the dog, process inputs, enable
+  pausing for players to catchup after
+  goal.
+========================================
+*/
 void wdt_c_handler() {
   count ++;
   if (count == 10) {
