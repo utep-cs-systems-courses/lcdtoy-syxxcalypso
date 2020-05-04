@@ -1,103 +1,106 @@
-# Project 3: Graphical LCD Toy 
-## Introduction
+# Project 3: Battle for the Dominion of Valhalla
+## The Story So Far
 
-Continuing your effort to help ACME Solutions provide Christmas toys, 
-your task is now to develop a toy with a graphical LCD screen.  You should 
-utilize the knowledge you havegained working with the buttons and 
-buzzer.  In addition, a series of libraries have been found to assist
-you in creating your game.
+Heimdall investigates the murders at the gates of gods.
 
-Students can propose alternate projects that demonstrate
-similar skills.  These proposals must approved by the course
-instructor in writing (e.g. email) at least two weeks before the
-project due date. 
+You are caught tampering with the evidence at the murder site of Odin.
 
-## Requirements
+The physics of this world cannot undo your crimes against the wise god,
+and you are taken captive to be thrown to Hel; but you have escaped,
+clawing your way to the deepest grottoes of Valhalla to finish what you've
+started.
+
+## Lay Waist to the Gods of Aesgard!
+
+Your sword drawn, the Aesir draw ever closer with axe and spell at the ready,
+and by surrounding you have closed the parameter around you.
+
+Yet you are not locked in the arena with them, they are locked in the area with you...
+
+One by one, you must slaughter your enemies through the penultimate show of metal:
+
+Pong.
+
+## How to build
+
+```
+cd lcdtoy-syxxcaclypso
+make && make load
+```
+
+## How to Play
+
+Left Player refers to the top paddle
+- Buttons 1 & 2 move top paddle left and right, respectively
+
+Right Player refers to the bottom paddle
+- Buttons 3 & 4 move bottom paddle left and right, respectively
+
+Each player is meant to hold the device with one hand, using
+their thumb to rock back and forth in order to play the game.
+
+After executing your enemy via. scoring a goal three times, press
+onboard switch #1 (P1S2/Reset) to bring forth the next poor bastard
+who dares to engage in trial by pong.
+
+## Requirements Met
 Your game should meet the following minimum criteria:
 
-Special for Spring 2020
+- Dynamically renders graphical elements that move and change, has multiple sounds
 
-- Dynamically render graphical elements that move and change, and multiple sounds
+- Text rendered from ASCII strings.
+- Graphical rendering performed by an interruptable foreground task
+-- that sleeps when ball stops moving.
+- Behavior changes in response to button presses and the progress of time
+-- Sensitivity to time and buttons is interrupt driven
+
+Unmet:
 -- including one original algorithmically rendered graphical element 
-- Some text must should be rendered from an ASCII string.
 -- using a font other than 5x7
-- Graphical rendering must be performed by an interruptable foreground task
--- that sleeps when there is nothing to update
-- The program's behavior must change in response to button presses and the progress of time
--- Sensitivity to time and buttons must be interrupt driven
 
+Additional Features:
 
-Usual requirements (Not for Spring 2020)
-
-- dynamically render graphical elements that move and change 
--- including one original algorithmically rendered graphical element 
-- handle colisions properly with other shapes and area boundaries
-- produce sounds triggered by game events
+- Handles collisions properly with shapes and area boundaries
+- Produces sounds triggered by game events
 -- in a manner that does not cause the game to pause
-- communicate with the player using text
-- include a state machine written in assembly language
-- respond to user input (from buttons)
-
-Don't forget to properly document your source code and how to play the game.
+- Communicates with the player using text
+- Responds to user input from buttons
 
 ## Grading Criteria
 
-Your lab will be graded based on the proficiencies it demonstrates.
-While we appreciate the complexity of an
-arcade quality game, our primary objective is that you demonstrate
-course-relevant skills including
-
 - relevant development tools such as make and emacs
+Proudly made using Spacemacs and GNU Make
 - use of timer interrupts to control program timing
+Watchdog used to drive timing, inputs, and frame delays
 - use of switch interrupts to determine when swiches change
+Switches using TI-GCC interrupt vector 4 via. p2swLib
 - modularization into multiple source files (including header files)
+Game logic is not modularized on purpose, all game logic exists in 'game.c'
+as it is not driven by separate components other than the included libs.
+
+There are times it is considered good practice to break apart code such as
+when there is reuse of components, this is not the case here and therefore
+to split any logic from this single file serves to unnecessarily obfuscate
+the code i.e. it would be bad practice.
+
 - use of explicit state machines to implement program functionality
+Input processors are glorified state machines, they do not use a switch
+mechanism as to do so would require convoluted workarounds that are both
+hard to read and defeat the efficiency that a jump table would have otherwise
+afforded. Wisdom taken from John Carmack.
 - ability to develop or modify (and of course use) linked data structures in c
 - mature programming
+My consistent C styling brings all the boys to the yard.
 -- readable, appropriate algorithms, modularization, data structures, symbol names etc
+I'm considering a cleanup of included libs.
 
-Below is an example of a sample "pong" application that would fully satisfy
-requirments.  The graphics would include
 
-- an arena to play in
-- a ball
-- two paddles (using a shape of your own design)
-- a score
-
-And behaviors that include
-
-- the ball moves in 2d, with direction changing when it collides with
-  screen elements
-- a sound plays when a collision occurs
--- without causing the ball's motion to pause
-- scores
+- Pong Scores
  - that advance through multiple rounds of play
  - that the ball either moves in-front-of or behind
+ This makes the rendering ugly, I opted to place scores on the outlier.
 
 ## Libraries
 
-Several libraries are provided.  
-They can be installed by the default production of Makefile in the repostiory's 
-root directory, or by a "$make install" in each of their subdirs.
-
-- timerLib: Provides code to configure Timer A to generate watchdog timer interrupts at 250 Hz
-
-- p2SwLib: Provides an interrupt-driven driver for the four switches on the LCD board and a demo program illustrating its intended functionality.
-
-- lcdLib: Provides low-level lcd control primitives, defines several fonts, 
-and a simple demo program that uses them.
-
-- shapeLib: Provides an translatable model for shapes that can be translated 
-and rendered as layers.
-
-- circleLib: Provides a circle model as a vector of demi-chord lengths,
-pre-computed circles as layers with a variety of radii, 
-and a demonstration program that renders a circle.
-
-
-## Demonstration program
-
-- shape-motion-demo: A demonstration program that uses shapeLib to represent
-and render shapes that move.
-
-
+- sound
+soundLib from project2 refactored for use here.
