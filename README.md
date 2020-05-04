@@ -24,7 +24,7 @@ Pong.
 ## How to build
 
 ```
-cd lcdtoy-syxxcaclypso
+cd lcdtoy-syxxcalypso
 make && make load
 ```
 
