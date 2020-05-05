@@ -10,7 +10,7 @@ and you are taken captive to be thrown to Hel; but you have escaped,
 clawing your way to the deepest grottoes of Valhalla to finish what you've
 started.
 
-## Lay Waist to the Gods of Aesgard!
+## Lay Waste to the Gods of Aesgard!
 
 Your sword drawn, the Aesir draw ever closer with axe and spell at the ready,
 and by surrounding you have closed the parameter around you.
