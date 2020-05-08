@@ -10,7 +10,7 @@ and you are taken captive to be thrown to Hel; but you have escaped,
 clawing your way to the deepest grottoes of Valhalla to finish what you've
 started.
 
-## Lay Waist to the Gods of Aesgard!
+## Lay Waste to the Gods of Aesgard!
 
 Your sword drawn, the Aesir draw ever closer with axe and spell at the ready,
 and by surrounding you have closed the parameter around you.
@@ -49,56 +49,67 @@ Your game should meet the following minimum criteria:
 - Dynamically renders graphical elements that move and change, has multiple sounds
 
 - Text rendered from ASCII strings.
-- Graphical rendering performed by an interruptable foreground task
--- that sleeps when ball stops moving.
+- Graphical rendering performed by an interruptable foreground task that sleeps when ball stops moving.
 - Behavior changes in response to button presses and the progress of time
--- Sensitivity to time and buttons is interrupt driven
+- Sensitivity to time and buttons is interrupt driven
 
 Unmet:
--- including one original algorithmically rendered graphical element 
--- using a font other than 5x7
+- Include one original algorithmically rendered graphical element 
+
+No new elements were written, unless the manipulation of existing element struct data counts.
+
+- using a font other than 5x7
+
+The fonts that you ripped from RogG's EduKit could not be adapted, had a strange issue where the font characters rendered sideway, and at random would be overwritten by other screen elements even if no elements occupied their space.
 
 Additional Features:
 
 - Handles collisions properly with shapes and area boundaries
-- Produces sounds triggered by game events
--- in a manner that does not cause the game to pause
+- Produces sounds triggered by game events in a manner that does not cause the game to pause, except where intentional (In the game over state)
 - Communicates with the player using text
 - Responds to user input from buttons
 
 ## Grading Criteria
 
-- relevant development tools such as make and emacs
-Proudly made using Spacemacs and GNU Make
-- use of timer interrupts to control program timing
-Watchdog used to drive timing, inputs, and frame delays
-- use of switch interrupts to determine when swiches change
-Switches using TI-GCC interrupt vector 4 via. p2swLib
-- modularization into multiple source files (including header files)
-Game logic is not modularized on purpose, all game logic exists in 'game.c'
-as it is not driven by separate components other than the included libs.
+- Relevant development tools such as make and emacs
 
-There are times it is considered good practice to break apart code such as
-when there is reuse of components, this is not the case here and therefore
-to split any logic from this single file serves to unnecessarily obfuscate
+Proudly made using Spacemacs and GNU Make
+
+- Use of timer interrupts to control program timing
+
+Watchdog used to drive timing, inputs, and frame delays. Buttons technically can't be used without interrupts anyway.
+
+- Use of switch interrupts to determine when swiches change
+
+Switches using TI-GCC interrupt vector 4 via. p2swLib
+
+- modularization into multiple source files (including header files)
+
+Game logic is not modularized on purpose, all game logic exists in 'game.c' as the only game-driving systems are rendering and collision, both of which are tightly coupled for efficiency.
+
+To split any logic from this single file serves to unnecessarily obfuscate
 the code i.e. it would be bad practice.
 
 - use of explicit state machines to implement program functionality
-Input processors are glorified state machines, they do not use a switch
-mechanism as to do so would require convoluted workarounds that are both
-hard to read and defeat the efficiency that a jump table would have otherwise
-afforded. Wisdom taken from John Carmack.
-- ability to develop or modify (and of course use) linked data structures in c
-- mature programming
+
+Input processors are glorified state machines, they do not use switch-case semantics as to do so would require convoluted workarounds that are both
+hard to read and defeat the efficiency that a jump table would have otherwise afforded.
+
+- Ability to develop or modify (and of course use) linked data structures in c
+
+This is only necessary in processing the geometry layers and transforms within a single function call, since it walks the list rather than explicitly calling on each layer.
+
+- Mature Programming
+
 My consistent C styling brings all the boys to the yard.
--- readable, appropriate algorithms, modularization, data structures, symbol names etc
-I'm considering a cleanup of included libs.
 
+- Readable! Appropriate Algorithms, Modularization, Data Structures, Symbol Names etc
 
-- Pong Scores
- - that advance through multiple rounds of play
- - that the ball either moves in-front-of or behind
- This makes the rendering ugly, I opted to place scores on the outlier.
+Compare my code to the ones provided in the libs and demos.
+
+- Keeps a Score
+- Advances through multiple rounds of play, up to a maximum of 5 per-game
+- The ball does not move behind or in front of the score, this seemed a bad practice and the LCD handles multiple geometry layers overlapping very poorly.
 
 ## Libraries
 
